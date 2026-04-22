@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.tipo_pessoa.label(class="form-label") }}
+                    <div>
+                        {% for subfield in form.tipo_pessoa %}
+                        <div class="form-check form-check-inline">
+                            {{ subfield(class="form-check-input") }}
+                            {{ subfield.label(class="form-check-label") }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.natureza.label(class="form-label") }}
+                    <div>
+                        {% for subfield in form.natureza %}
+                        <div class="form-check form-check-inline">
+                            {{ subfield(class="form-check-input", id=subfield.id) }}
+                            {{ subfield.label(class="form-check-label") }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    {{ form.nome.label(class="form-label") }}
+                    {{ form.nome(class="form-control") }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    {{ form.cpf_cnpj.label(class="form-label") }}
+                    {{ form.cpf_cnpj(class="form-control") }}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                {{ form.endereco.label(class="form-label") }}
+                {{ form.endereco(class="form-control", rows="3") }}
+            </div>
+            
+            <fieldset id="pessoa-fisica-fields" style="display: none;">
+                <legend class="fs-6">Dados de Pessoa Física</legend>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.rg.label(class="form-label") }}
+                        {{ form.rg(class="form-control") }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.genero.label(class="form-label") }}
+                        {{ form.genero(class="form-control") }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.ocupacao.label(class="form-label") }}
+                        {{ form.ocupacao(class="form-control") }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    {{ form.nome_mae.label(class="form-label") }}
+                    {{ form.nome_mae(class="form-control") }}
+                </div>
+            </fieldset>
+            
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('pessoas.index') }}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function togglePessoaFisicaFields() {
+        var naturezaFisica = document.getElementById('natureza-0').checked; // ID de "Pessoa Física"
+        var fieldset = document.getElementById('pessoa-fisica-fields');
+        if (naturezaFisica) {
+            fieldset.style.display = 'block';
+        } else {
+            fieldset.style.display = 'none';
+        }
+    }
+
+    // Adiciona o listener
+    document.querySelectorAll('input[name="natureza"]').forEach(function(radio) {
+        radio.addEventListener('change', togglePessoaFisicaFields);
+    });
+
+    // Executa ao carregar a página
+    document.addEventListener('DOMContentLoaded', togglePessoaFisicaFields);
+</script>
+{% endblock %}

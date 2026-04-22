@@ -1,0 +1,209 @@
+{% extends 'base.html' %} {% block content %}
+<div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-calendar-alt"></i> Calendário de Prazos e Tarefas</h2>
+        <a href="{{ url_for('tarefas.nova_tarefa') }}" class="btn btn-primary shadow-sm" style="background-color: var(--cor-primaria); border-color: var(--cor-primaria);">
+            <i class="fas fa-plus"></i> Nova Tarefa
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-primary" style="border-top-width: 4px;">
+        <div class="card-body">
+            <div id="calendar"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="tarefaModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header text-white" style="background-color: var(--cor-primaria-hover);">
+        <h5 class="modal-title"><i class="fas fa-tasks"></i> Detalhes da Tarefa</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h4 id="modalTitulo" class="text-dark mb-3 fw-bold"></h4>
+        
+        <div class="mb-3 pb-2 border-bottom">
+            <strong><i class="fas fa-folder-open text-secondary"></i> Processo:</strong> 
+            <a id="modalProcesso" href="#" class="ms-1 fw-bold text-decoration-none"></a>
+        </div>
+
+        <div class="mb-3">
+            <strong><i class="far fa-clock text-secondary"></i> Vencimento:</strong> 
+            <span id="modalVencimento" class="ms-1"></span>
+        </div>
+        
+        <div class="mb-3">
+            <strong>Status:</strong> 
+            <span id="modalStatus" class="badge ms-1 shadow-sm"></span>
+        </div>
+        
+        <div class="mb-3">
+            <strong><i class="fas fa-align-left text-secondary"></i> Descrição:</strong>
+            <div id="modalDescricao" class="text-muted mt-2 p-3 bg-light rounded" style="white-space: pre-wrap; font-size: 0.95em;"></div>
+        </div>
+
+        <div class="mb-0">
+            <strong><i class="fas fa-tags text-secondary"></i> Tags:</strong> 
+            <div id="modalTags" class="mt-2 d-flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary shadow-sm" data-bs-dismiss="modal">Fechar</button>
+        <a href="#" id="btnEditarTarefa" class="btn btn-primary shadow-sm">Editar Tarefa</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'pt-br',
+            height: 'auto',
+            eventDisplay: 'block',
+            displayEventTime: false,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listWeek'
+            },
+            buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', list: 'Lista' },
+            events: '/api/tarefas', 
+
+            // RENDERIZAÇÃO CUSTOMIZADA DO EVENTO (As bolinhas de tags)
+            eventContent: function(arg) {
+                let tagsHtml = '';
+                let tags = arg.event.extendedProps.tags;
+                
+                if (tags && tags.length > 0) {
+                    tagsHtml = '<div style="display: flex; gap: 3px; margin-top: 3px; flex-wrap: wrap;">';
+                    tags.forEach(t => {
+                        tagsHtml += `<span style="width: 8px; height: 8px; border-radius: 2px; background-color: ${t.cor}; box-shadow: 0 0 1px rgba(0,0,0,0.5);" title="${t.nome}"></span>`;
+                    });
+                    tagsHtml += '</div>';
+                }
+
+                let horaHtml = '';
+                if (arg.event.extendedProps.hora_formatada) {
+                    horaHtml = `<div style="text-align: right; font-size: 0.8em; font-weight: 600; opacity: 0.9; margin-top: 2px;">
+                                    ${arg.event.extendedProps.hora_formatada}
+                                </div>`;
+                }
+                
+                return {
+                    html: `<div style="padding: 2px 4px; display: flex; flex-direction: column; height: 100%; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 500; font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${arg.event.title}">
+                                    ${arg.event.title}
+                                </div>
+                                ${tagsHtml}
+                            </div>
+                            ${horaHtml}
+                           </div>`
+                };
+            },
+
+            eventClick: function(info) {
+                info.jsEvent.preventDefault(); 
+                
+                let props = info.event.extendedProps;
+                
+                // Preenche Título (Limpando a tag [ Número ] que o backend manda pro calendário)
+                let tituloLimpo = info.event.title;
+                if (props.processo_numero) {
+                    tituloLimpo = tituloLimpo.replace(`[ ${props.processo_numero} ] `, '');
+                }
+                document.getElementById('modalTitulo').innerText = tituloLimpo;
+                document.getElementById('modalDescricao').innerText = props.descricao;
+                
+                let textoVencimento = props.data_formatada;
+                if (props.hora_formatada) {
+                    textoVencimento += ` às ${props.hora_formatada}`;
+                }
+                document.getElementById('modalVencimento').innerText = textoVencimento;
+
+                const elProcesso = document.getElementById('modalProcesso');
+                if (props.processo_numero && props.processo_id) {
+                    elProcesso.textContent = props.processo_numero;
+                    elProcesso.href = '/processo/' + props.processo_id;
+                    elProcesso.style.pointerEvents = 'auto';
+                    elProcesso.className = 'ms-1 fw-bold text-decoration-none text-primary border-bottom border-primary';
+                } else {
+                    elProcesso.textContent = 'Tarefa Avulsa (Sem Processo)';
+                    elProcesso.removeAttribute('href');
+                    elProcesso.style.pointerEvents = 'none';
+                    elProcesso.className = 'ms-1 text-muted fst-italic text-decoration-none';
+                }
+                
+                // Preenche Status no Modal
+                let badgeStatus = document.getElementById('modalStatus');
+                badgeStatus.className = 'badge ms-1 shadow-sm '; 
+                
+                if (props.status === 'Concluída') {
+                    badgeStatus.innerText = props.status;
+                    badgeStatus.classList.add('bg-success');
+                } else if (props.atrasada) {
+                    badgeStatus.innerText = '⚠️ Atrasada (' + props.status + ')';
+                    badgeStatus.classList.add('bg-danger');
+                } else if (props.status === 'Em Andamento') {
+                    badgeStatus.innerText = props.status;
+                    badgeStatus.classList.add('bg-primary');
+                } else {
+                    badgeStatus.innerText = props.status;
+                    badgeStatus.classList.add('bg-warning', 'text-dark');
+                }
+
+                // Preenche Tags Visuais no Modal
+                let tagsContainer = document.getElementById('modalTags');
+                tagsContainer.innerHTML = ''; 
+                if (props.tags && props.tags.length > 0) {
+                    props.tags.forEach(t => {
+                        tagsContainer.innerHTML += `<span class="badge shadow-sm" style="background-color: ${t.cor}; color: #fff; text-shadow: 1px 1px 1px rgba(0,0,0,0.5);">${t.nome}</span>`;
+                    });
+                } else {
+                    tagsContainer.innerHTML = '<span class="text-muted small fst-italic">Nenhuma tag</span>';
+                }
+
+                // Configura o botão de Editar
+                document.getElementById('btnEditarTarefa').href = '/tarefa/' + info.event.id + '/editar?origem=calendario';
+                
+                // Abre o Modal
+                var myModal = new bootstrap.Modal(document.getElementById('tarefaModal'));
+                myModal.show();
+            }
+        });
+        calendar.render();
+    });
+</script>
+
+<style>
+    .fc-event {
+        cursor: pointer;
+        border-radius: 4px;
+        padding: 3px 5px;
+        margin-bottom: 2px;
+        border: none;
+        transition: transform 0.1s, opacity 0.2s;
+    }
+    .fc-event:hover {
+        opacity: 0.9;
+        transform: scale(1.01);
+    }
+    .fc-event-title {
+        font-weight: 500;
+        font-size: 0.85em;
+    }
+    .fc-toolbar-title {
+        font-size: 1.5em !important;
+        font-weight: 600;
+        color: var(--cor-primaria);
+    }
+</style>
+{% endblock %}

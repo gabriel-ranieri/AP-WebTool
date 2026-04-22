@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerar Novo Documento{% endblock %}
+
+{% block content %}
+<h1>Gerar Documento de Petição</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.processo_id.label(class="form-label") }}
+                {{ form.processo_id(class="form-select searchable-select") }}
+            </div>
+            <div class="mb-3">
+                {{ form.template_id.label(class="form-label") }}
+                {{ form.template_id(class="form-select searchable-select") }}
+            </div>
+            {{ form.submit(class="btn btn-success") }}
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('.searchable-select').select2({
+        theme: "bootstrap-5"
+    });
+});
+</script>
+{% endblock %}

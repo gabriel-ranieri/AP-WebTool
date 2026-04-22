@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.nome.label(class="form-label") }}
+                {{ form.nome(class="form-control") }}
+                {% for error in form.nome.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="mb-3">
+                {{ form.categoria_id.label(class="form-label") }}
+                {{ form.categoria_id(class="form-select") }}
+                {% for error in form.categoria_id.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                <div class="form-text">
+                    Não encontrou a categoria? <a href="{{ url_for('processos.categorias') }}">Adicione uma nova aqui</a>.
+                </div>
+            </div>
+
+            <div class="mb-3">
+                {{ form.conteudo.label(class="form-label") }}
+                {{ form.conteudo(class="form-control", rows="15") }}
+                <div class="form-text">
+                    Use as tags do Jinja2 para inserir dados dinâmicos do processo. Ex: {{ '{{ processo_numero }}' }}, {{ '{{ executado_nome }}' }}.
+                </div>
+                {% for error in form.conteudo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            
+            <div class="form-check mb-3">
+                {{ form.tem_endereco(class="form-check-input") }}
+                {{ form.tem_endereco.label(class="form-check-label") }}
+            </div>
+            
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('documentos.templates') }}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

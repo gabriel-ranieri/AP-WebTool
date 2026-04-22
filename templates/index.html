@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-light rounded-3">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold">Bem-vindo ao Sistema de Gestão</h1>
+        <p class="col-md-8 fs-4">Utilize o menu de navegação acima para gerenciar pessoas, processos e gerar novos documentos.</p>
+        <a href="{{ url_for('documentos.gerar_documento') }}" class="btn btn-primary btn-lg" type="button">Gerar Novo Documento</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Tracker Global: Petições Geradas (Últimos 30 dias)
+    </div>
+    <div class="card-body">
+        <canvas id="peticoesChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        const ctx = document.getElementById('peticoesChart').getContext('2d');
+        const chartData = {{ chart_data | tojson | safe }};
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Petições Geradas por Dia',
+                    data: chartData.data,
+                    backgroundColor: 'rgba(0, 90, 156, 0.7)',
+                    borderColor: 'rgba(0, 90, 156, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

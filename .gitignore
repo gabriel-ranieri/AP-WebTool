@@ -1,0 +1,18 @@
+# Ambiente Virtual
+venv/
+env/
+
+# Variáveis de Ambiente (Senhas e Configurações)
+.env
+
+# Arquivos temporários do Python e do Flask
+__pycache__/
+*.pyc
+instance/
+
+# Documentos gerados (Não queremos vazar petições de clientes no GitHub)
+temp_docs/
+*.docx
+*.pdf
+
+backup.sql

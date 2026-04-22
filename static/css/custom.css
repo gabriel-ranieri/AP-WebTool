@@ -1,0 +1,177 @@
+/* Importa a fonte 'Lato' do Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+
+/* --- Variáveis de Cor para Fácil Customização --- */
+:root {
+    --cor-primaria: #ba9964;      
+    --cor-primaria-hover: #1F334B; 
+    --cor-fundo: #EFECE7;         
+    --cor-card: #ffffff;         
+    --cor-texto: #1F334B;         
+    --cor-borda: #dee2e6;        
+    --cor-sombra: rgba(0, 0, 0, 0.08);
+    --raio-borda: 8px;           /* Bordas arredondadas */
+}
+
+/* --- Estilos Gerais e Tipografia --- */
+body {
+    font-family: 'Alta', 'Corbel', sans-serif;
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+}
+
+a {
+    color: var(--cor-primaria);
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
+}
+
+a:hover {
+    color: var(--cor-primaria-hover);
+    text-decoration: underline;
+}
+
+/* --- Barra de Navegação --- */
+.navbar.bg-dark {
+    background-color: #1F334B !important; /* Um azul-ardósia escuro */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.navbar.logo {
+    top:0;
+    left:0;
+    width: 50;
+    height: 50;
+    position: fixed;
+}
+/* --- Cards --- */
+.card {
+    border: none;
+    border-radius: var(--raio-borda);
+    box-shadow: 0 4px 12px var(--cor-sombra);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    margin-bottom: 1.5rem; /* Espaçamento extra entre cards */
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+    background-color: #f8f9fa; /* Um cinza um pouco mais escuro que o fundo */
+    border-bottom: 1px solid var(--cor-borda);
+    font-weight: 700;
+    border-top-left-radius: var(--raio-borda);
+    border-top-right-radius: var(--raio-borda);
+}
+
+/* --- Botões --- */
+.btn {
+    border-radius: var(--raio-borda);
+    font-weight: 700;
+    padding: 0.6rem 1.2rem;
+    transition: all 0.2s ease-in-out;
+    border: none;
+}
+
+.btn-primary {
+    background-color: var(--cor-primaria);
+}
+.btn-primary:hover {
+    background-color: var(--cor-primaria-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.btn-outline-primary {
+    color: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+    color: #ffffff; /* Deixa a letra branca no hover para melhor contraste */
+}
+
+.btn-danger {
+    background-color: #c82333;
+}
+.btn-danger:hover {
+    background-color: #a31d29;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.btn-warning {
+    background-color: #e0a800;
+    color: #fff;
+}
+.btn-warning:hover {
+    background-color: #c49200;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+
+/* --- Formulários --- */
+.form-control, .form-select {
+    border-radius: var(--raio-borda);
+    border: 1px solid var(--cor-borda);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 0.25rem rgba(0, 90, 156, 0.25);
+}
+
+/* --- Tabelas --- */
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table thead th {
+    background-color: #eef2f5;
+    font-weight: 700;
+    border-bottom: 2px solid var(--cor-borda);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: rgba(0, 90, 156, 0.04); /* Um azul bem clarinho */
+}
+
+/* --- Alertas --- */
+.alert {
+    border-radius: var(--raio-borda);
+    border-left: 5px solid;
+    padding: 1rem;
+}
+
+.alert-success {
+    border-color: var(--cor-primaria);
+}
+.alert-danger {
+    border-color: #dc3545;
+}
+.alert-info {
+    border-color: #0dcaf0;
+}
+.alert-warning {
+    border-color: #ffc107;
+}
+
+/* --- Paginação --- */
+.pagination .page-item .page-link {
+    border-radius: 5px;
+    margin: 0 2px;
+}
+.pagination .page-item.active .page-link {
+    background-color: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+}

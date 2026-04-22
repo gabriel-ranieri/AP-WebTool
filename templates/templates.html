@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Templates de Petições{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Templates de Petições</h1>
+    <a href="{{ url_for('documentos.novo_template') }}" class="btn btn-primary">Adicionar Template</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Filtros e Busca</h5>
+        <form method="GET" action="{{ url_for('documentos.templates') }}" class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="nome" class="form-control" placeholder="Buscar por nome do template..." value="{{ current_nome }}">
+            </div>
+            <div class="col-md-4">
+                <select name="categoria" class="form-select">
+                    <option value="">Todas as Categorias</option>
+                    {% for cat in categorias %}
+                    <option value="{{ cat.id }}" {% if cat.id == current_categoria %}selected{% endif %}>{{ cat.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-success w-100">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome do Template</th>
+                        <th>Categoria</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for template in templates %}
+                    <tr>
+                        <td>{{ template.nome }}</td>
+                        <td><span class="badge bg-secondary">{{ template.categoria_nome }}</span></td>
+                        <td>
+                            <a href="{{ url_for('documentos.editar_template', id=template.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                            <form action="{{ url_for('documentos.excluir_template', id=template.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este template?');">
+                                <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center">Nenhum template encontrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'base.html' %} {% block content %}
+<div class="container mt-4 mb-5">
+    <div class="row">
+        
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header text-white" style="background-color: var(--cor-primaria-hover);">
+                    <h5 class="mb-0"><i class="fas fa-plus"></i> Nova Tag</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.nome.label(class="form-label fw-bold") }}
+                            {{ form.nome(class="form-control", placeholder="Ex: Reunião, Urgente...") }}
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.cor.label(class="form-label fw-bold") }}
+                            {{ form.cor(class="form-control form-control-color w-100", type="color", title="Escolha uma cor") }}
+                        </div>
+                        
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header text-white" style="background-color: var(--cor-primaria-hover);">
+                    <h5 class="mb-0"><i class="fas fa-tags"></i> Tags Disponíveis</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Pré-visualização</th>
+                                <th>Nome da Tag</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tag in tags %}
+                            <tr>
+                                <td class="align-middle">
+                                    <span class="badge" style="background-color: {{ tag.cor }}; font-size: 0.9em; padding: 6px 10px;">
+                                        {{ tag.nome }}
+                                    </span>
+                                </td>
+                                <td class="align-middle fw-bold">{{ tag.nome }}</td>
+                                <td class="text-end align-middle">
+                                    <form action="{{ url_for('tarefas.excluir_tag', id=tag.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta tag? Ela será removida de todas as tarefas associadas.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                            <i class="fas fa-trash"></i> Excluir
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center py-4 text-muted">
+                                    Nenhuma tag cadastrada ainda.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

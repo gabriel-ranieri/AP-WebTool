@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Comunicações PJE de Hoje{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Comunicações do Dia</h1>
+    <h4>{{ hoje }}</h4>
+</div>
+
+{% if comunicacoes %}
+    <div class="row row-cols-1 g-4">
+        {% for com in comunicacoes %}
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="my-0">
+                        <strong>Processo:</strong> {{ com.numeroprocessocommascara }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush mb-3">
+                        <li class="list-group-item"><strong>Órgão:</strong> {{ com.nomeOrgao }}</li>
+                        <li class="list-group-item"><strong>Classe:</strong> {{ com.nomeClasse }}</li>
+                        <li class="list-group-item"><strong>Tipo:</strong> {{ com.tipoComunicacao }} ({{ com.meiocompleto }})</li>
+                        <li class="list-group-item"><strong>Disponibilizado em:</strong> {{ com.data_formatada }}</li>
+                    </ul>
+
+                    <h6 class="card-subtitle mb-2 text-muted">Conteúdo da Comunicação:</h6>
+                    
+                    <div class="p-2 border rounded bg-light" style="max-height: 250px; overflow-y: auto; font-size: 0.9em; white-space: pre-wrap;">
+                        {{ com.texto | safe }}
+                    </div>
+
+                </div>
+                <div class="card-footer text-muted">
+                    {% if com.link %}
+                        <a href="{{ com.link }}" target="_blank" class="btn btn-sm btn-outline-primary">Ver no Diário/Link Externo</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info text-center" role="alert">
+        Nenhuma comunicação encontrada para o dia de hoje.
+    </div>
+{% endif %}
+{% endblock %}

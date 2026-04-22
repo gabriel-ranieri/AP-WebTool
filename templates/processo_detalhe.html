@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    
+    <div class="mb-3">
+        <a href="{{ url_for('processos.index') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Voltar para Processos
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4 border-primary" style="border-top-width: 4px;">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="text-muted mb-1"><i class="fas fa-folder-open"></i> {{ processo.categoria_nome }}</h5>
+                    <h2 class="mb-0" style="color: var(--cor-primaria);">{{ processo.numero }}</h2>
+                </div>
+                <div class="text-end">
+                    <span class="badge fs-6 mb-2 d-inline-block text-white" style="background-color: var(--cor-primaria-hover);">
+                        {{ processo.status }}
+                    </span>
+                    <br>
+                    <div class="btn-group shadow-sm">
+                        <a href="{{ url_for('processos.editar_processo', id=processo.id) }}" class="btn btn-sm btn-outline-primary" title="Editar dados do processo">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProcessoModal" title="Excluir Processo">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="row text-muted">
+                <div class="col-md-4">
+                    <strong><i class="fas fa-user"></i> Cliente:</strong> {{ processo.cliente_nome }} <br>
+                    <small>CPF/CNPJ: {{ processo.cliente_cpf }}</small>
+                </div>
+                <div class="col-md-4">
+                    <strong><i class="fas fa-balance-scale"></i> Foro/Comarca:</strong><br>
+                    {{ processo.foro }} - {{ processo.comarca }}
+                </div>
+                <div class="col-md-4">
+                    <strong><i class="fas fa-gavel"></i> Vara:</strong><br>
+                    {{ processo.vara }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center">
+            <h4 class="mb-0"><i class="fas fa-tasks"></i> Tarefas deste Processo</h4>
+            
+            {% if tags_unicas %}
+            <select id="filtroTags" class="form-select form-select-sm ms-4 shadow-sm" style="width: 200px; border-color: var(--cor-primaria);">
+                <option value="todas">Todas as Tags</option>
+                {% for tag in tags_unicas %}
+                    <option value="{{ tag }}">{{ tag }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+        
+        <a href="{{ url_for('tarefas.nova_tarefa', processo_id=processo.id, origem='processo') }}" class="btn text-white shadow-sm" style="background-color: var(--cor-primaria); border-color: var(--cor-primaria);">
+            <i class="fas fa-plus"></i> Adicionar Tarefa
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Status</th>
+                        <th>Vencimento</th>
+                        <th>Tarefa</th>
+                        <th>Tags</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tarefas %}
+                    <tr class="linha-tarefa" data-tags="{{ t.tags_nomes or '' }}">
+                        <td class="align-middle">
+                            {% if t.status == 'Concluída' %}
+                                <span class="badge bg-success">Concluída</span>
+                            {% elif t.atrasada %}
+                                <span class="badge bg-danger">⚠️ Atrasada</span>
+                            {% elif t.status == 'Em Andamento' %}
+                                <span class="badge bg-primary">Em Andamento</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Pendente</span>
+                            {% endif %}
+                        </td>
+                        <td class="align-middle fw-bold">
+                            {{ t.data_vencimento.strftime('%d/%m/%Y') }}
+                            {% if t.hora_vencimento %}
+                                <br><small class="text-muted"><i class="far fa-clock"></i> {{ t.hora_vencimento }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="align-middle">
+                            <strong>{{ t.titulo }}</strong>
+                            {% if t.descricao %}
+                                <p class="text-muted small mb-0 text-truncate" style="max-width: 300px;">{{ t.descricao }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="align-middle">
+                            {% for tag in t.tags_list %}
+                                <span class="badge" style="background-color: {{ tag.cor }};">{{ tag.nome }}</span>
+                            {% endfor %}
+                        </td>
+                        <td class="text-end align-middle">
+                            <a href="{{ url_for('tarefas.editar_tarefa', id=t.id, origem='processo') }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i> Detalhes
+                            </a>
+                            <form action="{{ url_for('tarefas.excluir_tarefa', id=t.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Excluir esta tarefa e seus anexos?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">
+                            Nenhuma tarefa vinculada a este processo ainda. <br>
+                            Clique em "Adicionar Tarefa" para começar.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<div class="modal fade" id="deleteProcessoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Atenção</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Tem certeza que deseja excluir o processo <strong>{{ processo.numero }}</strong>?</p>
+        <p class="text-danger small mb-0"><strong>Aviso:</strong> Isso também apagará todas as tarefas e registros de petições vinculados a ele. Esta ação não pode ser desfeita.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form action="{{ url_for('processos.excluir_processo', id=processo.id) }}" method="POST" class="m-0 p-0">
+            <button type="submit" class="btn btn-danger">Sim, Excluir Processo</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filtro = document.getElementById('filtroTags');
+        if (filtro) {
+            filtro.addEventListener('change', function() {
+                const tagEscolhida = this.value;
+                const linhas = document.querySelectorAll('.linha-tarefa');
+                
+                linhas.forEach(linha => {
+                    const tagsDaLinha = linha.getAttribute('data-tags');
+                    
+                    if (tagEscolhida === 'todas') {
+                        linha.style.display = ''; // Mostra tudo
+                    } else if (tagsDaLinha.includes(tagEscolhida)) {
+                        linha.style.display = ''; // Mostra se a tag bater
+                    } else {
+                        linha.style.display = 'none'; // Esconde se não tiver a tag
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

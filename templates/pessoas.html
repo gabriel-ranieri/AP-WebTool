@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerenciar Pessoas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Pessoas (Clientes / Associados)</h1>
+    <a href="{{ url_for('pessoas.nova_pessoa') }}" class="btn btn-primary">Adicionar Pessoa</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome / Razão Social</th>
+                        <th>CPF / CNPJ</th>
+                        <th>Tipo</th>
+                        <th>Natureza</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pessoa in pessoas %}
+                    <tr>
+                        <td>{{ pessoa.nome }}</td>
+                        <td>{{ pessoa.cpf_cnpj }}</td>
+                        <td><span class="badge bg-info">{{ pessoa.tipo_pessoa }}</span></td>
+                        <td><span class="badge bg-secondary">{{ pessoa.natureza }}</span></td>
+                        <td>
+                            <a href="{{ url_for('pessoas.editar_pessoa', id=pessoa.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                            <form action="{{ url_for('pessoas.excluir_pessoa', id=pessoa.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir?');">
+                                <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">Nenhuma pessoa cadastrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

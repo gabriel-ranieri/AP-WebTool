@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Busca Avançada de Comunicações PJE{% endblock %}
+
+{% block content %}
+<h1>Busca Avançada de Comunicações</h1>
+
+<div class="card mb-4">
+    <div class="card-header">Filtros de Busca</div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('pje.comunicacoes_buscar') }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="data_inicio" class="form-label">Data de Início</label>
+                    <input type="date" class="form-control" id="data_inicio" name="data_inicio" value="{{ data_inicio }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="data_fim" class="form-label">Data de Fim</label>
+                    <input type="date" class="form-control" id="data_fim" name="data_fim" value="{{ data_fim }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="numero_processo" class="form-label">Número do Processo</label>
+                    <input type="text" class="form-control" id="numero_processo" name="numero_processo" value="{{ numero_processo }}" placeholder="Opcional">
+                </div>
+                <div class="col-md-3">
+                    <label for="nome_parte" class="form-label">Nome da Parte</label>
+                    <input type="text" class="form-control" id="nome_parte" name="nome_parte" value="{{ nome_parte }}" placeholder="Opcional">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Buscar Comunicações</button>
+                    <a href="{{ url_for('pje.comunicacoes_buscar') }}" class="btn btn-secondary">Limpar Busca</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<hr>
+
+<h3>Resultados da Busca</h3>
+
+{% for com in resultados %}
+<div class="col">
+    <div class="card h-100">
+        <div class="card-header bg-light">
+            <h5 class="my-0">
+                <strong>Processo:</strong> {{ com.numeroprocessocommascara }}
+            </h5>
+        </div>
+        <div class="card-body">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item"><strong>Órgão:</strong> {{ com.nomeOrgao }}</li>
+                <li class="list-group-item"><strong>Classe:</strong> {{ com.nomeClasse }}</li>
+                <li class="list-group-item"><strong>Tipo:</strong> {{ com.tipoComunicacao }} ({{ com.meiocompleto }})</li>
+                <li class="list-group-item"><strong>Disponibilizado em:</strong> {{ com.data_formatada }}</li>
+            </ul>
+        </div>
+        <div class="card-footer text-muted">
+            {% if com.link %}
+                <a href="{{ com.link }}" target="_blank" class="btn btn-sm btn-outline-primary">Ver no Diário/Link Externo</a>
+            {% endif %}
+        </div>
+        </div>
+</div>
+{% endfor %}
+
+{% endblock %}
