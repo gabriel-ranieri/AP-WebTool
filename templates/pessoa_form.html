@@ -51,7 +51,7 @@
             </div>
             
             <fieldset id="pessoa-fisica-fields" style="display: none;">
-                <legend class="fs-6">Dados de Pessoa Física</legend>
+                <legend class="fs-6 border-bottom pb-2 mb-3">Dados de Pessoa Física</legend>
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         {{ form.rg.label(class="form-label") }}
@@ -64,6 +64,25 @@
                     <div class="col-md-4 mb-3">
                         {{ form.ocupacao.label(class="form-label") }}
                         {{ form.ocupacao(class="form-control") }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        {{ form.nacionalidade.label(class="form-label") }}
+                        {{ form.nacionalidade(class="form-control", placeholder="Ex: Brasileiro(a)") }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.estado_civil.label(class="form-label") }}
+                        {{ form.estado_civil(class="form-select") }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.data_nascimento.label(class="form-label") }}
+                        {{ form.data_nascimento(class="form-control", type="date") }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control", placeholder="email@exemplo.com") }}
                     </div>
                 </div>
                 <div class="mb-3">
@@ -81,22 +100,55 @@
 
 {% block scripts %}
 <script>
+    // 1. Controla a exibição dos campos e ajusta o nome CPF/CNPJ
     function togglePessoaFisicaFields() {
         var naturezaFisica = document.getElementById('natureza-0').checked; // ID de "Pessoa Física"
         var fieldset = document.getElementById('pessoa-fisica-fields');
+        var inputCpfCnpj = document.getElementById('cpf_cnpj');
+        var labelCpfCnpj = document.querySelector('label[for="cpf_cnpj"]');
+
         if (naturezaFisica) {
             fieldset.style.display = 'block';
+            labelCpfCnpj.innerHTML = 'CPF';
+            inputCpfCnpj.placeholder = '000.000.000-00';
         } else {
             fieldset.style.display = 'none';
+            labelCpfCnpj.innerHTML = 'CNPJ';
+            inputCpfCnpj.placeholder = '00.000.000/0000-00';
         }
     }
 
-    // Adiciona o listener
+    // 2. Quando o usuário clica em Física/Empresa, atualiza a tela e LIMPA o campo
     document.querySelectorAll('input[name="natureza"]').forEach(function(radio) {
-        radio.addEventListener('change', togglePessoaFisicaFields);
+        radio.addEventListener('change', function() {
+            togglePessoaFisicaFields();
+            document.getElementById('cpf_cnpj').value = ''; // Evita lixo de formatação anterior
+        });
     });
 
-    // Executa ao carregar a página
+    // 3. A Máscara que OBEDECE ao botão (Não tenta adivinhar pelo tamanho)
+    document.getElementById('cpf_cnpj').addEventListener('input', function (e) {
+        var isPessoaFisica = document.getElementById('natureza-0').checked;
+        var value = e.target.value.replace(/\D/g, ''); // Limpa letras e símbolos
+
+        if (isPessoaFisica) {
+            // Força a ser CPF (Trava em 11 números)
+            value = value.substring(0, 11);
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        } else {
+            // Força a ser CNPJ (Trava em 14 números)
+            value = value.substring(0, 14);
+            value = value.replace(/(\d{2})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d)/, '$1/$2');
+            value = value.replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+        }
+        e.target.value = value;
+    });
+
+    // 4. Executa a checagem inicial assim que a página carrega
     document.addEventListener('DOMContentLoaded', togglePessoaFisicaFields);
 </script>
-{% endblock %}
+{% endblock %}S

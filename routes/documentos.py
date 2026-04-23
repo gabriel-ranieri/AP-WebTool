@@ -14,6 +14,18 @@ from forms import TemplateForm, GerarDocumentoForm
 documentos_bp = Blueprint('documentos', __name__)
 
 # --- HELPERS ---
+
+def formatar_cpf_cnpj(doc):
+    """Garante que o CPF/CNPJ saia com pontos e hifens na petição."""
+    if not doc: return ""
+    doc_limpo = "".join(filter(str.isdigit, str(doc)))
+    
+    if len(doc_limpo) == 11:
+        return f"{doc_limpo[:3]}.{doc_limpo[3:6]}.{doc_limpo[6:9]}-{doc_limpo[9:]}"
+    elif len(doc_limpo) == 14:
+        return f"{doc_limpo[:2]}.{doc_limpo[2:5]}.{doc_limpo[5:8]}/{doc_limpo[8:12]}-{doc_limpo[12:]}"
+    return doc
+
 def obter_data_extenso(data=None):
     if data is None:
         data = datetime.today().date()
@@ -157,16 +169,26 @@ def gerar_documento():
     cursor.execute("SELECT t.id, CONCAT(c.nome, ' - ', t.nome) as display FROM templates t JOIN categorias c ON t.categoria_id = c.id ORDER BY c.nome, t.nome")
     form.template_id.choices = [(t[0], t[1]) for t in cursor.fetchall()]
     
+    cursor_dict = conn.cursor(dictionary=True)
+    cursor_dict.execute("SELECT id, tem_endereco FROM templates")
+    templates_info = {t['id']: bool(t['tem_endereco']) for t in cursor_dict.fetchall()}
+
     if form.validate_on_submit():
         processo_id = form.processo_id.data
         template_id = form.template_id.data
         
         cursor_dict = conn.cursor(dictionary=True)
+        
+        # 1. ATUALIZAMOS O SELECT PARA PUXAR OS NOVOS CAMPOS
         cursor_dict.execute("""
             SELECT pr.*, pe.nome as executado_nome, pe.cpf_cnpj as executado_cpf, 
                    pe.endereco as executado_endereco, pe.rg as executado_rg, 
                    pe.ocupacao as executado_ocupacao, pe.genero as executado_genero,
-                   pe.nome_mae as executado_nome_mae
+                   pe.nome_mae as executado_nome_mae,
+                   pe.nacionalidade as executado_nacionalidade,
+                   pe.estado_civil as executado_estado_civil,
+                   pe.data_nascimento as executado_data_nascimento,
+                   pe.email as executado_email
             FROM processos pr 
             JOIN pessoas pe ON pr.pessoa_id = pe.id 
             WHERE pr.id = %s
@@ -188,12 +210,30 @@ def gerar_documento():
         hoje = datetime.now()
         data_por_extenso = hoje.strftime('%d de %B de %Y')
         
+        # 2. FORMATAMOS OS DADOS (LOWERCASE, UPPERCASE, MÁSCARA) ANTES DE ENVIAR PARA O WORD
+        data_nasc_formatada = ""
+        if processo['executado_data_nascimento']:
+            data_nasc_formatada = processo['executado_data_nascimento'].strftime('%d/%m/%Y')
+
         render_context = {
             'processo_vara': processo['vara'],
             'processo_foro': processo['foro'],
             'processo_comarca': processo['comarca'],
             'processo_numero': processo['numero'],
-            'executado_nome': processo['executado_nome'],
+            
+            # Dados Pessoais Formatados:
+            'pessoa_nome': (processo['executado_nome'] or "").upper(),
+            'pessoa_nacionalidade': (processo['executado_nacionalidade'] or "").lower(),
+            'pessoa_estado_civil': (processo['executado_estado_civil'] or "").lower(),
+            'pessoa_ocupacao': (processo['executado_ocupacao'] or "").lower(),
+            'pessoa_data_nascimento': data_nasc_formatada,
+            'pessoa_rg': processo['executado_rg'] or "Não informado",
+            'pessoa_cpf': formatar_cpf_cnpj(processo['executado_cpf']),
+            'pessoa_nome_mae': (processo['executado_nome_mae'] or ""),
+            'pessoa_endereco': (processo['executado_endereco'] or ""),
+            'pessoa_email': (processo['executado_email'] or "").lower(),
+
+            'endereco': form.endereco.data if template_obj['tem_endereco'] else "",
             'data_por_extenso': data_por_extenso,
             'data_hoje': obter_data_extenso()
         }
@@ -229,7 +269,7 @@ def gerar_documento():
 
     cursor.close()
     conn.close()
-    return render_template('gerar_documento_form.html', form=form)
+    return render_template('gerar_documento_form.html', form=form, templates_info=templates_info)
 
 @documentos_bp.route('/confirmacao_geracao/<filename_base>')
 @login_required

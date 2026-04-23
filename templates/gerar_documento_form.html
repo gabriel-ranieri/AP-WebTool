@@ -9,14 +9,25 @@
     <div class="card-body">
         <form method="POST">
             {{ form.hidden_tag() }}
+            
             <div class="mb-3">
-                {{ form.processo_id.label(class="form-label") }}
+                {{ form.processo_id.label(class="form-label fw-bold") }}
                 {{ form.processo_id(class="form-select searchable-select") }}
             </div>
+            
             <div class="mb-3">
-                {{ form.template_id.label(class="form-label") }}
-                {{ form.template_id(class="form-select searchable-select") }}
+                {{ form.template_id.label(class="form-label fw-bold") }}
+                {{ form.template_id(class="form-select searchable-select", id="template-select") }}
             </div>
+
+            <div class="mb-4" id="campo-endereco" style="display: none; background-color: #fff8e1; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
+                {{ form.endereco.label(class="form-label fw-bold") }}
+                {{ form.endereco(class="form-control", id="endereco", placeholder="Digite o endereço completo para a citação/intimação...") }}
+                <div class="form-text mt-2 text-dark">
+                    <i class="fas fa-info-circle"></i> Este template exige um endereço específico. Ele substituirá a tag <strong>{{ '{{ endereco }}' }}</strong> no documento final.
+                </div>
+            </div>
+
             {{ form.submit(class="btn btn-success") }}
         </form>
     </div>
@@ -26,9 +37,37 @@
 {% block scripts %}
 <script>
 $(document).ready(function() {
+    // 1. Inicializa as barras de pesquisa (Select2) originais do seu código
     $('.searchable-select').select2({
         theme: "bootstrap-5"
     });
+
+    // 2. LÓGICA DO ENDEREÇO DINÂMICO
+    // Pega as informações enviadas pelo Python (Quais templates precisam de endereço)
+    const templatesInfo = {{ templates_info | tojson | safe }};
+    
+    const templateSelect = $('#template-select');
+    const campoEndereco = $('#campo-endereco');
+    const inputEndereco = $('#endereco');
+
+    // Função que checa e exibe/esconde
+    function checarEndereco() {
+        const templateId = templateSelect.val();
+        
+        // Se o template selecionado estiver na lista e for "true" (tem_endereco == 1)
+        if (templateId && templatesInfo[templateId] === true) {
+            campoEndereco.slideDown(250); 
+            inputEndereco.prop('required', true); // Força o preenchimento!
+        } else {
+            campoEndereco.slideUp(250);   
+            inputEndereco.prop('required', false); // Tira a obrigatoriedade
+            inputEndereco.val(''); // Limpa a caixa se o usuário desistir
+        }
+    }
+
+    // Roda a checagem ao carregar a página e sempre que o usuário trocar de template
+    checarEndereco();
+    templateSelect.on('change', checarEndereco);
 });
 </script>
 {% endblock %}

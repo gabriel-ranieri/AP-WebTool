@@ -40,11 +40,23 @@ def get_tags_choices():
 @tarefas_bp.route('/calendario')
 @login_required
 def calendario():
-    return render_template('calendario.html')
+    # Busca as tags para montar o menu dropdown na página
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT nome FROM tags ORDER BY nome")
+    tags = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    tags_unicas = [t['nome'] for t in tags]
+    return render_template('calendario.html', tags_unicas=tags_unicas)
 
 @tarefas_bp.route('/api/tarefas')
 @login_required
 def api_tarefas():
+    # 1. Pega a tag que o calendário mandou (se houver)
+    tag_filtro = request.args.get('tag')
+    
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
@@ -59,9 +71,21 @@ def api_tarefas():
         LEFT JOIN processos p ON t.processo_id = p.id
         LEFT JOIN tarefa_tags tt ON t.id = tt.tarefa_id
         LEFT JOIN tags tg ON tt.tag_id = tg.id
-        GROUP BY t.id
     """
-    cursor.execute(query)
+    params = []
+    
+    # 2. Se houver um filtro, busca APENAS as tarefas que contém aquela tag
+    if tag_filtro and tag_filtro != 'todas':
+        query += " WHERE EXISTS (SELECT 1 FROM tarefa_tags tt2 JOIN tags tg2 ON tt2.tag_id = tg2.id WHERE tt2.tarefa_id = t.id AND tg2.nome = %s) "
+        params.append(tag_filtro)
+
+    query += " GROUP BY t.id "
+    
+    if params:
+        cursor.execute(query, tuple(params))
+    else:
+        cursor.execute(query)
+        
     tarefas = cursor.fetchall()
     cursor.close()
     conn.close()

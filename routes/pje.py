@@ -4,6 +4,9 @@ from datetime import date, datetime
 from flask import Blueprint, render_template, request, flash
 from flask_login import login_required
 
+# IMPORTANTE: Adicionamos a conexão com o banco de dados
+from database import get_db_connection
+
 pje_bp = Blueprint('pje', __name__)
 
 def buscar_comunicacoes_pje(params):
@@ -34,12 +37,29 @@ def comunicacoes_hoje():
     comunicacoes = buscar_comunicacoes_pje(params)
     
     if comunicacoes:
+        # Busca rápida de todos os números de processos cadastrados no seu banco
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, numero FROM processos")
+        processos_db = {p['numero']: p['id'] for p in cursor.fetchall()}
+        cursor.close()
+        conn.close()
+
         for com in comunicacoes:
             try:
                 dt_obj = datetime.strptime(com['data_disponibilizacao'], '%Y-%m-%d')
                 com['data_formatada'] = dt_obj.strftime('%d/%m/%Y')
             except (ValueError, TypeError):
                 com['data_formatada'] = com.get('data_disponibilizacao', 'Data indisponível')
+            
+            # Lógica do Botão: Checa se este processo da API está na sua base
+            numero = com.get('numeroprocessocommascara')
+            if numero in processos_db:
+                com['existe_no_banco'] = True
+                com['processo_id'] = processos_db[numero]
+            else:
+                com['existe_no_banco'] = False
+                com['processo_id'] = None
     else:
         comunicacoes = []
         
@@ -77,13 +97,31 @@ def comunicacoes_buscar():
                     params['nomeParte'] = nome_parte
                 
                 resultados_api = buscar_comunicacoes_pje(params)
+                
                 if resultados_api:
+                    # Checagem na busca também
+                    conn = get_db_connection()
+                    cursor = conn.cursor(dictionary=True)
+                    cursor.execute("SELECT id, numero FROM processos")
+                    processos_db = {p['numero']: p['id'] for p in cursor.fetchall()}
+                    cursor.close()
+                    conn.close()
+
                     for res in resultados_api:
                         try:
                             dt_obj = datetime.strptime(res['data_disponibilizacao'], '%Y-%m-%d')
                             res['data_formatada'] = dt_obj.strftime('%d/%m/%Y')
                         except (ValueError, TypeError):
                             res['data_formatada'] = res.get('data_disponibilizacao', 'Data indisponível')
+                        
+                        numero = res.get('numeroprocessocommascara')
+                        if numero in processos_db:
+                            res['existe_no_banco'] = True
+                            res['processo_id'] = processos_db[numero]
+                        else:
+                            res['existe_no_banco'] = False
+                            res['processo_id'] = None
+                            
                     resultados = resultados_api
 
         except ValueError:

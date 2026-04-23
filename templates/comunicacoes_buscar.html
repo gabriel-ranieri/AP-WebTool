@@ -57,11 +57,26 @@
                 <li class="list-group-item"><strong>Disponibilizado em:</strong> {{ com.data_formatada }}</li>
             </ul>
         </div>
-        <div class="card-footer text-muted">
-            {% if com.link %}
-                <a href="{{ com.link }}" target="_blank" class="btn btn-sm btn-outline-primary">Ver no Diário/Link Externo</a>
-            {% endif %}
-        </div>
+        <div class="card-footer text-muted d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if com.link %}
+                            <a href="{{ com.link }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-external-link-alt"></i> Diário / Link Externo
+                            </a>
+                        {% endif %}
+                    </div>
+                    <div>
+                        {% if com.existe_no_banco %}
+                            <a href="{{ url_for('tarefas.nova_tarefa', processo_id=com.processo_id, origem='pje') }}" class="btn btn-sm btn-success">
+                                <i class="fas fa-plus"></i> Criar Tarefa
+                            </a>
+                        {% else %}
+                            <a href="{{ url_for('processos.novo_processo', numero_processo=com.numeroprocessocommascara) }}" class="btn btn-sm btn-warning text-dark shadow-sm">
+                                <i class="fas fa-folder-plus"></i> Adicionar Processo
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
         </div>
 </div>
 {% endfor %}

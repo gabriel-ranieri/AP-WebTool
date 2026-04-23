@@ -31,13 +31,13 @@
                         </div>
 
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 {{ form.status.label(class="form-label fw-bold") }}
                                 {{ form.status(class="form-select") }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-8">
                                 {{ form.processo_id.label(class="form-label fw-bold") }}
-                                {{ form.processo_id(class="form-select") }}
+                                {{ form.processo_id(class="form-select searchable-select") }}
                             </div>
                         </div>
 
@@ -137,9 +137,23 @@
   </div>
 </div>
 {% endif %}
+
 {% if anexos %}
     {% for anexo in anexos %}
         <form id="form-excluir-anexo-{{ anexo.id }}" action="{{ url_for('tarefas.excluir_anexo', id=anexo.id) }}" method="POST" class="d-none"></form>
     {% endfor %}
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('.searchable-select').select2({
+        theme: "bootstrap-5",
+        placeholder: "Selecione ou digite para buscar...",
+        allowClear: true,
+        width: '100%'
+    });
+});
+</script>
 {% endblock %}

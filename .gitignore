@@ -16,3 +16,9 @@ temp_docs/
 *.pdf
 
 backup.sql
+
+static/upload
+
+robo_pje.py
+
+modelos/modelo_peticao.docx

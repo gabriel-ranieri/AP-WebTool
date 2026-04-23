@@ -119,6 +119,11 @@ def novo_processo():
     form.pessoa_id.choices = get_pessoas_choices()
     form.categoria_id.choices = get_categorias_choices() 
     
+    if request.method == 'GET':
+        numero_url = request.args.get('numero_processo')
+        if numero_url:
+            form.numero.data = numero_url
+
     if form.validate_on_submit():
         conn = get_db_connection()
         cursor = conn.cursor()
