@@ -51,12 +51,14 @@ def limpar_arquivos_antigos():
 
 def get_categorias_choices():
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM categorias ORDER BY nome")
-    categorias = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return [(c[0], c[1]) for c in categorias]
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, nome FROM categorias ORDER BY nome")
+        categorias = cursor.fetchall()
+        return [(c[0], c[1]) for c in categorias]
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 # --- TEMPLATES CRUD ---
 @documentos_bp.route('/templates')
@@ -66,35 +68,37 @@ def templates():
     filter_categoria = request.args.get('categoria', '', type=int)
 
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    cursor.execute("SELECT * FROM categorias ORDER BY nome")
-    categorias_list = cursor.fetchall()
-
-    query_base = """
-    SELECT t.*, c.nome as categoria_nome 
-    FROM templates t 
-    JOIN categorias c ON t.categoria_id = c.id
-    WHERE 1=1
-    """
-    params = []
-    
-    if search_nome:
-        query_base += " AND t.nome LIKE %s"
-        params.append(f"%{search_nome}%")
-    if filter_categoria:
-        query_base += " AND t.categoria_id = %s"
-        params.append(filter_categoria)
+    try:
+        cursor = conn.cursor(dictionary=True)
         
-    query_base += " ORDER BY t.nome"
-    
-    cursor.execute(query_base, tuple(params))
-    lista_templates = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    
-    return render_template('templates.html', templates=lista_templates, categorias=categorias_list,
-                           current_nome=search_nome, current_categoria=filter_categoria)
+        cursor.execute("SELECT * FROM categorias ORDER BY nome")
+        categorias_list = cursor.fetchall()
+
+        query_base = """
+        SELECT t.*, c.nome as categoria_nome 
+        FROM templates t 
+        JOIN categorias c ON t.categoria_id = c.id
+        WHERE 1=1
+        """
+        params = []
+        
+        if search_nome:
+            query_base += " AND t.nome LIKE %s"
+            params.append(f"%{search_nome}%")
+        if filter_categoria:
+            query_base += " AND t.categoria_id = %s"
+            params.append(filter_categoria)
+            
+        query_base += " ORDER BY t.nome"
+        
+        cursor.execute(query_base, tuple(params))
+        lista_templates = cursor.fetchall()
+        
+        return render_template('templates.html', templates=lista_templates, categorias=categorias_list,
+                               current_nome=search_nome, current_categoria=filter_categoria)
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 @documentos_bp.route('/template/novo', methods=['GET', 'POST'])
 @login_required
@@ -103,8 +107,8 @@ def novo_template():
     form.categoria_id.choices = get_categorias_choices()
     if form.validate_on_submit():
         conn = get_db_connection()
-        cursor = conn.cursor()
         try:
+            cursor = conn.cursor()
             sql = "INSERT INTO templates (nome, conteudo, tem_endereco, categoria_id) VALUES (%s, %s, %s, %s)"
             val = (form.nome.data, form.conteudo.data, form.tem_endereco.data, form.categoria_id.data)
             cursor.execute(sql, val)
@@ -114,44 +118,60 @@ def novo_template():
         except mysql.connector.Error as err:
             flash(f'Erro ao criar template: {err}', 'danger')
         finally:
-            cursor.close()
-            conn.close()
+            if 'cursor' in locals() and cursor: cursor.close()
+            if 'conn' in locals() and conn.is_connected(): conn.close()
+            
     return render_template('template_form.html', form=form, title="Novo Template")
 
 @documentos_bp.route('/template/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar_template(id):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM templates WHERE id = %s", (id,))
-    template_data = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    
+    # Parte 1: Busca
+    conn_fetch = get_db_connection()
+    try:
+        cursor_fetch = conn_fetch.cursor(dictionary=True)
+        cursor_fetch.execute("SELECT * FROM templates WHERE id = %s", (id,))
+        template_data = cursor_fetch.fetchone()
+    finally:
+        if 'cursor_fetch' in locals() and cursor_fetch: cursor_fetch.close()
+        if 'conn_fetch' in locals() and conn_fetch.is_connected(): conn_fetch.close()
+        
     if not template_data:
         abort(404)
 
     form = TemplateForm(data=template_data)
     form.categoria_id.choices = get_categorias_choices()
+    
+    # Parte 2: Atualização
     if form.validate_on_submit():
         conn = get_db_connection()
-        cursor = conn.cursor()
-        sql = "UPDATE templates SET nome=%s, conteudo=%s, tem_endereco=%s, categoria_id=%s WHERE id=%s"
-        val = (form.nome.data, form.conteudo.data, form.tem_endereco.data, form.categoria_id.data, id)
-        cursor.execute(sql, val)
-        conn.commit()
-        flash('Template atualizado com sucesso!', 'success')
-        return redirect(url_for('documentos.templates'))
+        try:
+            cursor = conn.cursor()
+            sql = "UPDATE templates SET nome=%s, conteudo=%s, tem_endereco=%s, categoria_id=%s WHERE id=%s"
+            val = (form.nome.data, form.conteudo.data, form.tem_endereco.data, form.categoria_id.data, id)
+            cursor.execute(sql, val)
+            conn.commit()
+            flash('Template atualizado com sucesso!', 'success')
+            return redirect(url_for('documentos.templates'))
+        finally:
+            if 'cursor' in locals() and cursor: cursor.close()
+            if 'conn' in locals() and conn.is_connected(): conn.close()
+            
     return render_template('template_form.html', form=form, title="Editar Template")
 
 @documentos_bp.route('/template/<int:id>/excluir', methods=['POST'])
 @login_required
 def excluir_template(id):
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM templates WHERE id = %s", (id,))
-    conn.commit()
-    flash('Template excluído com sucesso!', 'success')
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM templates WHERE id = %s", (id,))
+        conn.commit()
+        flash('Template excluído com sucesso!', 'success')
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
+        
     return redirect(url_for('documentos.templates'))
 
 # --- GERAÇÃO DE DOCUMENTOS ---
@@ -160,116 +180,118 @@ def excluir_template(id):
 def gerar_documento():
     limpar_arquivos_antigos()
     form = GerarDocumentoForm()
+    
     conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT p.id, CONCAT(p.numero, ' - ', pe.nome) as display FROM processos p JOIN pessoas pe ON p.pessoa_id = pe.id ORDER BY pe.nome")
-    form.processo_id.choices = [(p[0], p[1]) for p in cursor.fetchall()]
-    
-    cursor.execute("SELECT t.id, CONCAT(c.nome, ' - ', t.nome) as display FROM templates t JOIN categorias c ON t.categoria_id = c.id ORDER BY c.nome, t.nome")
-    form.template_id.choices = [(t[0], t[1]) for t in cursor.fetchall()]
-    
-    cursor_dict = conn.cursor(dictionary=True)
-    cursor_dict.execute("SELECT id, tem_endereco FROM templates")
-    templates_info = {t['id']: bool(t['tem_endereco']) for t in cursor_dict.fetchall()}
-
-    if form.validate_on_submit():
-        processo_id = form.processo_id.data
-        template_id = form.template_id.data
-        
+    try:
+        cursor = conn.cursor()
         cursor_dict = conn.cursor(dictionary=True)
         
-        # 1. ATUALIZAMOS O SELECT PARA PUXAR OS NOVOS CAMPOS
-        cursor_dict.execute("""
-            SELECT pr.*, pe.nome as executado_nome, pe.cpf_cnpj as executado_cpf, 
-                   pe.endereco as executado_endereco, pe.rg as executado_rg, 
-                   pe.ocupacao as executado_ocupacao, pe.genero as executado_genero,
-                   pe.nome_mae as executado_nome_mae,
-                   pe.nacionalidade as executado_nacionalidade,
-                   pe.estado_civil as executado_estado_civil,
-                   pe.data_nascimento as executado_data_nascimento,
-                   pe.email as executado_email
-            FROM processos pr 
-            JOIN pessoas pe ON pr.pessoa_id = pe.id 
-            WHERE pr.id = %s
-        """, (processo_id,))
-        processo = cursor_dict.fetchone()
+        cursor.execute("SELECT p.id, CONCAT(p.numero, ' - ', pe.nome) as display FROM processos p JOIN pessoas pe ON p.pessoa_id = pe.id ORDER BY pe.nome")
+        form.processo_id.choices = [(p[0], p[1]) for p in cursor.fetchall()]
         
-        cursor_dict.execute("SELECT * FROM templates WHERE id = %s", (template_id,))
-        template_obj = cursor_dict.fetchone()
-
-        if not processo or not template_obj:
-            flash('Processo ou Template não encontrado.', 'danger')
-            return redirect(url_for('documentos.gerar_documento'))
-            
-        try:
-            locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
-        except locale.Error:
-            locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')
-
-        hoje = datetime.now()
-        data_por_extenso = hoje.strftime('%d de %B de %Y')
+        cursor.execute("SELECT t.id, CONCAT(c.nome, ' - ', t.nome) as display FROM templates t JOIN categorias c ON t.categoria_id = c.id ORDER BY c.nome, t.nome")
+        form.template_id.choices = [(t[0], t[1]) for t in cursor.fetchall()]
         
-        # 2. FORMATAMOS OS DADOS (LOWERCASE, UPPERCASE, MÁSCARA) ANTES DE ENVIAR PARA O WORD
-        data_nasc_formatada = ""
-        if processo['executado_data_nascimento']:
-            data_nasc_formatada = processo['executado_data_nascimento'].strftime('%d/%m/%Y')
+        cursor_dict.execute("SELECT id, tem_endereco FROM templates")
+        templates_info = {t['id']: bool(t['tem_endereco']) for t in cursor_dict.fetchall()}
 
-        render_context = {
-            'processo_vara': processo['vara'],
-            'processo_foro': processo['foro'],
-            'processo_comarca': processo['comarca'],
-            'processo_numero': processo['numero'],
+        if form.validate_on_submit():
+            processo_id = form.processo_id.data
+            template_id = form.template_id.data
             
-            # Dados Pessoais Formatados:
-            'pessoa_nome': (processo['executado_nome'] or "").upper(),
-            'pessoa_nacionalidade': (processo['executado_nacionalidade'] or "").lower(),
-            'pessoa_estado_civil': (processo['executado_estado_civil'] or "").lower(),
-            'pessoa_ocupacao': (processo['executado_ocupacao'] or "").lower(),
-            'pessoa_data_nascimento': data_nasc_formatada,
-            'pessoa_rg': processo['executado_rg'] or "Não informado",
-            'pessoa_cpf': formatar_cpf_cnpj(processo['executado_cpf']),
-            'pessoa_nome_mae': (processo['executado_nome_mae'] or ""),
-            'pessoa_endereco': (processo['executado_endereco'] or ""),
-            'pessoa_email': (processo['executado_email'] or "").lower(),
-
-            'endereco': form.endereco.data if template_obj['tem_endereco'] else "",
-            'data_por_extenso': data_por_extenso,
-            'data_hoje': obter_data_extenso()
-        }
-        
-        template_string_db = template_obj['conteudo']
-        jinja_template = Template(template_string_db)
-        corpo_peticao_renderizado = jinja_template.render(render_context)
-
-        try:
-            modelo_dir = os.path.join(current_app.root_path, 'modelos')
-            temp_dir = os.path.join(current_app.root_path, 'temp_docs')
+            cursor_dict.execute("""
+                SELECT pr.*, pe.nome as executado_nome, pe.cpf_cnpj as executado_cpf, 
+                       pe.endereco as executado_endereco, pe.rg as executado_rg, 
+                       pe.ocupacao as executado_ocupacao, pe.genero as executado_genero,
+                       pe.nome_mae as executado_nome_mae,
+                       pe.nacionalidade as executado_nacionalidade,
+                       pe.estado_civil as executado_estado_civil,
+                       pe.data_nascimento as executado_data_nascimento,
+                       pe.email as executado_email
+                FROM processos pr 
+                JOIN pessoas pe ON pr.pessoa_id = pe.id 
+                WHERE pr.id = %s
+            """, (processo_id,))
+            processo = cursor_dict.fetchone()
             
-            doc = DocxTemplate(os.path.join(modelo_dir, 'modelo_peticao.docx'))
-            docxtpl_context = {'corpo_peticao': corpo_peticao_renderizado}
-            docxtpl_context.update(render_context)
-            doc.render(docxtpl_context)
+            cursor_dict.execute("SELECT * FROM templates WHERE id = %s", (template_id,))
+            template_obj = cursor_dict.fetchone()
+
+            if not processo or not template_obj:
+                flash('Processo ou Template não encontrado.', 'danger')
+                return redirect(url_for('documentos.gerar_documento'))
+                
+            try:
+                locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+            except locale.Error:
+                locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')
+
+            hoje = datetime.now()
+            data_por_extenso = hoje.strftime('%d de %B de %Y')
             
-            filename_base = f"peticao_{processo['numero'].replace('.', '_')}_{uuid.uuid4().hex[:8]}"
-            output_docx_path = os.path.join(temp_dir, f"{filename_base}.docx")
-            doc.save(output_docx_path)
+            data_nasc_formatada = ""
+            if processo['executado_data_nascimento']:
+                data_nasc_formatada = processo['executado_data_nascimento'].strftime('%d/%m/%Y')
 
-            cursor_tracker = conn.cursor()
-            sql_tracker = "INSERT INTO peticoes_geradas (processo_id, template_id, data_geracao) VALUES (%s, %s, %s)"
-            val_tracker = (processo_id, template_id, datetime.now())
-            cursor_tracker.execute(sql_tracker, val_tracker)
-            conn.commit()
-            cursor_tracker.close()
+            render_context = {
+                'processo_vara': processo['vara'],
+                'processo_foro': processo['foro'],
+                'processo_comarca': processo['comarca'],
+                'processo_numero': processo['numero'],
+                
+                # Dados Pessoais Formatados:
+                'pessoa_nome': (processo['executado_nome'] or "").upper(),
+                'pessoa_nacionalidade': (processo['executado_nacionalidade'] or "").lower(),
+                'pessoa_estado_civil': (processo['executado_estado_civil'] or "").lower(),
+                'pessoa_ocupacao': (processo['executado_ocupacao'] or "").lower(),
+                'pessoa_data_nascimento': data_nasc_formatada,
+                'pessoa_rg': processo['executado_rg'] or "Não informado",
+                'pessoa_cpf': formatar_cpf_cnpj(processo['executado_cpf']),
+                'pessoa_nome_mae': (processo['executado_nome_mae'] or ""),
+                'pessoa_endereco': (processo['executado_endereco'] or ""),
+                'pessoa_email': (processo['executado_email'] or "").lower(),
+
+                'endereco': form.endereco.data if template_obj['tem_endereco'] else "",
+                'data_por_extenso': data_por_extenso,
+                'data_hoje': obter_data_extenso()
+            }
             
-            return redirect(url_for('documentos.confirmacao_geracao', filename_base=filename_base))
+            template_string_db = template_obj['conteudo']
+            jinja_template = Template(template_string_db)
+            corpo_peticao_renderizado = jinja_template.render(render_context)
 
-        except Exception as e:
-            flash(f'Ocorreu um erro ao gerar o documento: {e}', 'danger')
+            try:
+                modelo_dir = os.path.join(current_app.root_path, 'modelos')
+                temp_dir = os.path.join(current_app.root_path, 'temp_docs')
+                
+                doc = DocxTemplate(os.path.join(modelo_dir, 'modelo_peticao.docx'))
+                docxtpl_context = {'corpo_peticao': corpo_peticao_renderizado}
+                docxtpl_context.update(render_context)
+                doc.render(docxtpl_context)
+                
+                filename_base = f"peticao_{processo['numero'].replace('.', '_')}_{uuid.uuid4().hex[:8]}"
+                output_docx_path = os.path.join(temp_dir, f"{filename_base}.docx")
+                doc.save(output_docx_path)
 
-    cursor.close()
-    conn.close()
-    return render_template('gerar_documento_form.html', form=form, templates_info=templates_info)
+                cursor_tracker = conn.cursor()
+                sql_tracker = "INSERT INTO peticoes_geradas (processo_id, template_id, data_geracao) VALUES (%s, %s, %s)"
+                val_tracker = (processo_id, template_id, datetime.now())
+                cursor_tracker.execute(sql_tracker, val_tracker)
+                conn.commit()
+                cursor_tracker.close()
+                
+                return redirect(url_for('documentos.confirmacao_geracao', filename_base=filename_base))
+
+            except Exception as e:
+                flash(f'Ocorreu um erro ao gerar o documento: {e}', 'danger')
+
+        return render_template('gerar_documento_form.html', form=form, templates_info=templates_info)
+    finally:
+        # Tudo garantido de ser fechado, não importa em qual return o código tenha saído!
+        if 'cursor_dict' in locals() and cursor_dict: cursor_dict.close()
+        if 'cursor_tracker' in locals() and cursor_tracker: cursor_tracker.close()
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 @documentos_bp.route('/confirmacao_geracao/<filename_base>')
 @login_required

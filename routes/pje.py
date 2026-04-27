@@ -37,13 +37,15 @@ def comunicacoes_hoje():
     comunicacoes = buscar_comunicacoes_pje(params)
     
     if comunicacoes:
-        # Busca rápida de todos os números de processos cadastrados no seu banco
+        # Busca rápida de todos os números de processos cadastrados no seu banco (BLINDADA)
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, numero FROM processos")
-        processos_db = {p['numero']: p['id'] for p in cursor.fetchall()}
-        cursor.close()
-        conn.close()
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id, numero FROM processos")
+            processos_db = {p['numero']: p['id'] for p in cursor.fetchall()}
+        finally:
+            if 'cursor' in locals() and cursor: cursor.close()
+            if 'conn' in locals() and conn.is_connected(): conn.close()
 
         for com in comunicacoes:
             try:
@@ -99,13 +101,15 @@ def comunicacoes_buscar():
                 resultados_api = buscar_comunicacoes_pje(params)
                 
                 if resultados_api:
-                    # Checagem na busca também
+                    # Checagem na busca também (BLINDADA)
                     conn = get_db_connection()
-                    cursor = conn.cursor(dictionary=True)
-                    cursor.execute("SELECT id, numero FROM processos")
-                    processos_db = {p['numero']: p['id'] for p in cursor.fetchall()}
-                    cursor.close()
-                    conn.close()
+                    try:
+                        cursor = conn.cursor(dictionary=True)
+                        cursor.execute("SELECT id, numero FROM processos")
+                        processos_db = {p['numero']: p['id'] for p in cursor.fetchall()}
+                    finally:
+                        if 'cursor' in locals() and cursor: cursor.close()
+                        if 'conn' in locals() and conn.is_connected(): conn.close()
 
                     for res in resultados_api:
                         try:

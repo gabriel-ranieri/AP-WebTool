@@ -50,33 +50,41 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-    user_data = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    if user_data:
-        return User(id=user_data['id'], email=user_data['email'], password=user_data['password'])
-    return None
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        user_data = cursor.fetchone()
+        
+        if user_data:
+            return User(id=user_data['id'], email=user_data['email'], password=user_data['password'])
+        return None
+    finally:
+        if 'cursor' in locals(): cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
+    
     form = LoginForm()
     if form.validate_on_submit():
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM users WHERE email = %s", (form.email.data,))
-        user_data = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        if user_data and check_password_hash(user_data['password'], form.password.data):
-            user = User(id=user_data['id'], email=user_data['email'], password=user_data['password'])
-            login_user(user)
-            return redirect(url_for('index'))
-        else:
-            flash('Login inválido. Verifique seu e-mail e senha.', 'danger')
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM users WHERE email = %s", (form.email.data,))
+            user_data = cursor.fetchone()
+            
+            if user_data and check_password_hash(user_data['password'], form.password.data):
+                user = User(id=user_data['id'], email=user_data['email'], password=user_data['password'])
+                login_user(user)
+                return redirect(url_for('index'))
+            else:
+                flash('Login inválido. Verifique seu e-mail e senha.', 'danger')
+        finally:
+            if 'cursor' in locals(): cursor.close()
+            if 'conn' in locals() and conn.is_connected(): conn.close()
+            
     return render_template('login.html', form=form)
 
 @app.route('/logout')
@@ -91,25 +99,26 @@ def logout():
 @login_required
 def index():
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    query = """
-    SELECT DATE(data_geracao) as dia, COUNT(*) as total 
-    FROM peticoes_geradas
-    WHERE data_geracao >= CURDATE() - INTERVAL 30 DAY
-    GROUP BY DATE(data_geracao)
-    ORDER BY dia ASC
-    """
-    cursor.execute(query)
-    peticoes_data = cursor.fetchall()
-    
-    labels = [dia['dia'].strftime('%d/%m') for dia in peticoes_data]
-    data = [dia['total'] for dia in peticoes_data]
-    chart_data = {'labels': labels, 'data': data}
-    
-    cursor.close()
-    conn.close()
-    return render_template('index.html', chart_data=chart_data)
+    try:
+        cursor = conn.cursor(dictionary=True)
+        query = """
+        SELECT DATE(data_geracao) as dia, COUNT(*) as total 
+        FROM peticoes_geradas
+        WHERE data_geracao >= CURDATE() - INTERVAL 30 DAY
+        GROUP BY DATE(data_geracao)
+        ORDER BY dia ASC
+        """
+        cursor.execute(query)
+        peticoes_data = cursor.fetchall()
+        
+        labels = [dia['dia'].strftime('%d/%m') for dia in peticoes_data]
+        data = [dia['total'] for dia in peticoes_data]
+        chart_data = {'labels': labels, 'data': data}
+        
+        return render_template('index.html', chart_data=chart_data)
+    finally:
+        if 'cursor' in locals(): cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 if __name__ == '__main__':
-    # Se for rodar localmente no Windows. A Hostinger usará o Gunicorn.
     app.run(debug=os.getenv('FLASK_DEBUG') == '1')

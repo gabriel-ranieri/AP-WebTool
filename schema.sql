@@ -1,3 +1,6 @@
+CREATE DATABASE IF NOT EXISTS advocacia_digital;
+USE advocacia_digital;
+
 -- 1. Tabela de Usuários
 CREATE TABLE IF NOT EXISTS `users` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -20,12 +23,16 @@ CREATE TABLE IF NOT EXISTS `pessoas` (
   `tipo_pessoa` enum('Associado ACRESP','Cliente') NOT NULL,
   `nome` varchar(255) NOT NULL,
   `natureza` enum('Pessoa Física','Empresa') NOT NULL,
-  `cpf_cnpj` varchar(20) NOT NULL,
+  `cpf_cnpj` varchar(20) NULL,
   `endereco` text,
   `rg` varchar(20) DEFAULT NULL,
   `ocupacao` varchar(100) DEFAULT NULL,
   `genero` varchar(50) DEFAULT NULL,
   `nome_mae` varchar(255) DEFAULT NULL,
+  `nacionalidade` varchar(100) DEFAULT NULL,
+  `estado_civil` varchar(50) DEFAULT NULL,
+  `data_nascimento` date DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `cpf_cnpj` (`cpf_cnpj`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

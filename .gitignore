@@ -1,6 +1,8 @@
 # Ambiente Virtual
 venv/
 env/
+venv_servidor/
+.vscode/
 
 # Variáveis de Ambiente (Senhas e Configurações)
 .env
@@ -10,15 +12,24 @@ __pycache__/
 *.pyc
 instance/
 
-# Documentos gerados (Não queremos vazar petições de clientes no GitHub)
+# Documentos gerados
 temp_docs/
 *.docx
 *.pdf
 
+# Backup banco de dados
 backup.sql
 
-static/upload
+# Anexos de tarefas
+static/uploads/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.docx
 
+# Programa opcional para caso o WebTool esteja hospedado em um centro de dados
 robo_pje.py
 
+# Modelo para geração de petição
 modelos/modelo_peticao.docx

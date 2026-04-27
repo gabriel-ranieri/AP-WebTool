@@ -20,75 +20,78 @@ def allowed_file(filename):
 # --- HELPERS ---
 def get_processos_choices():
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, numero FROM processos ORDER BY numero")
-    processos = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return [(0, 'Nenhum')] + [(p[0], p[1]) for p in processos]
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, numero FROM processos ORDER BY numero")
+        processos = cursor.fetchall()
+        return [(0, 'Nenhum')] + [(p[0], p[1]) for p in processos]
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 def get_tags_choices():
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM tags ORDER BY nome")
-    tags = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return [(t[0], t[1]) for t in tags]
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, nome FROM tags ORDER BY nome")
+        tags = cursor.fetchall()
+        return [(t[0], t[1]) for t in tags]
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 # --- CALENDÁRIO ---
 @tarefas_bp.route('/calendario')
 @login_required
 def calendario():
-    # Busca as tags para montar o menu dropdown na página
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT nome FROM tags ORDER BY nome")
-    tags = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    
-    tags_unicas = [t['nome'] for t in tags]
-    return render_template('calendario.html', tags_unicas=tags_unicas)
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT nome FROM tags ORDER BY nome")
+        tags = cursor.fetchall()
+        tags_unicas = [t['nome'] for t in tags]
+        return render_template('calendario.html', tags_unicas=tags_unicas)
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 @tarefas_bp.route('/api/tarefas')
 @login_required
 def api_tarefas():
-    # 1. Pega a tag que o calendário mandou (se houver)
     tag_filtro = request.args.get('tag')
-    
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
     
-    query = """
-        SELECT 
-            t.id, t.titulo, t.descricao, t.data_vencimento, t.hora_vencimento, t.status,
-            t.processo_id,
-            p.numero as processo_numero,
-            GROUP_CONCAT(tg.nome SEPARATOR '|') as tags_nomes,
-            GROUP_CONCAT(tg.cor SEPARATOR '|') as tags_cores
-        FROM tarefas t
-        LEFT JOIN processos p ON t.processo_id = p.id
-        LEFT JOIN tarefa_tags tt ON t.id = tt.tarefa_id
-        LEFT JOIN tags tg ON tt.tag_id = tg.id
-    """
-    params = []
-    
-    # 2. Se houver um filtro, busca APENAS as tarefas que contém aquela tag
-    if tag_filtro and tag_filtro != 'todas':
-        query += " WHERE EXISTS (SELECT 1 FROM tarefa_tags tt2 JOIN tags tg2 ON tt2.tag_id = tg2.id WHERE tt2.tarefa_id = t.id AND tg2.nome = %s) "
-        params.append(tag_filtro)
-
-    query += " GROUP BY t.id "
-    
-    if params:
-        cursor.execute(query, tuple(params))
-    else:
-        cursor.execute(query)
+    try:
+        cursor = conn.cursor(dictionary=True)
+        query = """
+            SELECT 
+                t.id, t.titulo, t.descricao, t.data_vencimento, t.hora_vencimento, t.status,
+                t.processo_id,
+                p.numero as processo_numero,
+                GROUP_CONCAT(tg.nome SEPARATOR '|') as tags_nomes,
+                GROUP_CONCAT(tg.cor SEPARATOR '|') as tags_cores
+            FROM tarefas t
+            LEFT JOIN processos p ON t.processo_id = p.id
+            LEFT JOIN tarefa_tags tt ON t.id = tt.tarefa_id
+            LEFT JOIN tags tg ON tt.tag_id = tg.id
+        """
+        params = []
         
-    tarefas = cursor.fetchall()
-    cursor.close()
-    conn.close()
+        if tag_filtro and tag_filtro != 'todas':
+            query += " WHERE EXISTS (SELECT 1 FROM tarefa_tags tt2 JOIN tags tg2 ON tt2.tag_id = tg2.id WHERE tt2.tarefa_id = t.id AND tg2.nome = %s) "
+            params.append(tag_filtro)
+
+        query += " GROUP BY t.id "
+        
+        if params:
+            cursor.execute(query, tuple(params))
+        else:
+            cursor.execute(query)
+            
+        tarefas = cursor.fetchall()
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
     eventos = []
     hoje = date.today()
@@ -175,8 +178,8 @@ def nova_tarefa():
 
     if form.validate_on_submit():
         conn = get_db_connection()
-        cursor = conn.cursor()
         try:
+            cursor = conn.cursor()
             processo_id = form.processo_id.data if form.processo_id.data != 0 else None
             sql_tarefa = """INSERT INTO tarefas (titulo, descricao, data_vencimento, hora_vencimento, status, processo_id) 
                             VALUES (%s, %s, %s, %s, %s, %s)"""
@@ -211,8 +214,8 @@ def nova_tarefa():
         except mysql.connector.Error as err:
             flash(f'Erro ao salvar tarefa: {err}', 'danger')
         finally:
-            cursor.close()
-            conn.close()
+            if 'cursor' in locals() and cursor: cursor.close()
+            if 'conn' in locals() and conn.is_connected(): conn.close()
 
     return render_template('tarefa_form.html', form=form, title="Nova Tarefa", origem=origem, processo_id=proc_id)
 
@@ -220,87 +223,83 @@ def nova_tarefa():
 @login_required
 def editar_tarefa(id):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    cursor.execute("SELECT * FROM tarefas WHERE id = %s", (id,))
-    tarefa = cursor.fetchone()
-    
-    if not tarefa:
-        cursor.close()
-        conn.close()
-        abort(404)
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM tarefas WHERE id = %s", (id,))
+        tarefa = cursor.fetchone()
+        
+        if not tarefa:
+            abort(404)
 
-    if tarefa.get('hora_vencimento') and isinstance(tarefa['hora_vencimento'], timedelta):
-        total_seconds = int(tarefa['hora_vencimento'].total_seconds())
-        horas, resto = divmod(total_seconds, 3600)
-        minutos, _ = divmod(resto, 60)
-        tarefa['hora_vencimento'] = time(hour=horas, minute=minutos)
+        if tarefa.get('hora_vencimento') and isinstance(tarefa['hora_vencimento'], timedelta):
+            total_seconds = int(tarefa['hora_vencimento'].total_seconds())
+            horas, resto = divmod(total_seconds, 3600)
+            minutos, _ = divmod(resto, 60)
+            tarefa['hora_vencimento'] = time(hour=horas, minute=minutos)
 
-    cursor.execute("SELECT tag_id FROM tarefa_tags WHERE tarefa_id = %s", (id,))
-    tags_atuais = [row['tag_id'] for row in cursor.fetchall()]
+        cursor.execute("SELECT tag_id FROM tarefa_tags WHERE tarefa_id = %s", (id,))
+        tags_atuais = [row['tag_id'] for row in cursor.fetchall()]
 
-    form = TarefaForm(data=tarefa)
-    form.processo_id.choices = get_processos_choices()
-    form.tags.choices = get_tags_choices()
+        form = TarefaForm(data=tarefa)
+        form.processo_id.choices = get_processos_choices()
+        form.tags.choices = get_tags_choices()
 
-    origem = request.args.get('origem')
-    proc_id_original = tarefa['processo_id']
+        origem = request.args.get('origem')
+        proc_id_original = tarefa['processo_id']
 
-    cursor.execute("SELECT * FROM tarefa_anexos WHERE tarefa_id = %s", (id,))
-    anexos = cursor.fetchall()
+        cursor.execute("SELECT * FROM tarefa_anexos WHERE tarefa_id = %s", (id,))
+        anexos = cursor.fetchall()
 
-    if request.method == 'GET':
-        form.tags.data = tags_atuais
-        form.processo_id.data = tarefa['processo_id'] if tarefa['processo_id'] else 0
+        if request.method == 'GET':
+            form.tags.data = tags_atuais
+            form.processo_id.data = tarefa['processo_id'] if tarefa['processo_id'] else 0
 
-    if form.validate_on_submit():
-        try:
-            processo_id = form.processo_id.data if form.processo_id.data != 0 else None
-            sql_update = """UPDATE tarefas SET titulo=%s, descricao=%s, data_vencimento=%s, 
-                            hora_vencimento=%s, status=%s, processo_id=%s WHERE id=%s"""
-            val_update = (form.titulo.data, form.descricao.data, form.data_vencimento.data, 
-                          form.hora_vencimento.data, form.status.data, processo_id, id)
-            cursor.execute(sql_update, val_update)
+        if form.validate_on_submit():
+            try:
+                processo_id = form.processo_id.data if form.processo_id.data != 0 else None
+                sql_update = """UPDATE tarefas SET titulo=%s, descricao=%s, data_vencimento=%s, 
+                                hora_vencimento=%s, status=%s, processo_id=%s WHERE id=%s"""
+                val_update = (form.titulo.data, form.descricao.data, form.data_vencimento.data, 
+                              form.hora_vencimento.data, form.status.data, processo_id, id)
+                cursor.execute(sql_update, val_update)
 
-            cursor.execute("DELETE FROM tarefa_tags WHERE tarefa_id = %s", (id,))
-            if form.tags.data:
-                sql_tags = "INSERT INTO tarefa_tags (tarefa_id, tag_id) VALUES (%s, %s)"
-                for tag_id in form.tags.data:
-                    cursor.execute(sql_tags, (id, tag_id))
-            
-            arquivos = request.files.getlist('anexos')
-            for arquivo in arquivos:
-                if arquivo and arquivo.filename and allowed_file(arquivo.filename):
-                    nome_seguro = secure_filename(arquivo.filename)
-                    nome_unico = f"{uuid.uuid4().hex}_{nome_seguro}"
-                    caminho_completo = os.path.join(current_app.config['UPLOAD_FOLDER'], nome_unico)
-                    arquivo.save(caminho_completo)
-                    cursor.execute("""
-                        INSERT INTO tarefa_anexos (tarefa_id, nome_original, caminho_arquivo) 
-                        VALUES (%s, %s, %s)
-                    """, (id, nome_seguro, nome_unico))
+                cursor.execute("DELETE FROM tarefa_tags WHERE tarefa_id = %s", (id,))
+                if form.tags.data:
+                    sql_tags = "INSERT INTO tarefa_tags (tarefa_id, tag_id) VALUES (%s, %s)"
+                    for tag_id in form.tags.data:
+                        cursor.execute(sql_tags, (id, tag_id))
+                
+                arquivos = request.files.getlist('anexos')
+                for arquivo in arquivos:
+                    if arquivo and arquivo.filename and allowed_file(arquivo.filename):
+                        nome_seguro = secure_filename(arquivo.filename)
+                        nome_unico = f"{uuid.uuid4().hex}_{nome_seguro}"
+                        caminho_completo = os.path.join(current_app.config['UPLOAD_FOLDER'], nome_unico)
+                        arquivo.save(caminho_completo)
+                        cursor.execute("""
+                            INSERT INTO tarefa_anexos (tarefa_id, nome_original, caminho_arquivo) 
+                            VALUES (%s, %s, %s)
+                        """, (id, nome_seguro, nome_unico))
 
-            conn.commit()
-            flash('Tarefa atualizada com sucesso!', 'success')
-            if origem == 'processo' and proc_id_original:
-                return redirect(url_for('processos.ver_processo', id=proc_id_original))
-            return redirect(url_for('tarefas.calendario'))
-        except mysql.connector.Error as err:
-            flash(f'Erro ao atualizar tarefa: {err}', 'danger')
-        finally:
-            cursor.close()
-            conn.close()
+                conn.commit()
+                flash('Tarefa atualizada com sucesso!', 'success')
+                if origem == 'processo' and proc_id_original:
+                    return redirect(url_for('processos.ver_processo', id=proc_id_original))
+                return redirect(url_for('tarefas.calendario'))
+            except mysql.connector.Error as err:
+                flash(f'Erro ao atualizar tarefa: {err}', 'danger')
 
-    cursor.close()
-    conn.close()
-    return render_template('tarefa_form.html', form=form, title="Editar Tarefa", origem=origem, processo_id=proc_id_original, anexos=anexos)
+        return render_template('tarefa_form.html', form=form, title="Editar Tarefa", origem=origem, processo_id=proc_id_original, anexos=anexos)
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 @tarefas_bp.route('/tarefa/<int:id>/excluir', methods=['POST'])
 @login_required
 def excluir_tarefa(id):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
     try:
+        cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT caminho_arquivo FROM tarefa_anexos WHERE tarefa_id = %s", (id,))
         anexos = cursor.fetchall()
 
@@ -317,8 +316,8 @@ def excluir_tarefa(id):
     except mysql.connector.Error as err:
         flash(f'Erro ao excluir tarefa: {err}', 'danger')
     finally:
-        cursor.close()
-        conn.close()
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
         
     return redirect(url_for('tarefas.calendario'))
 
@@ -328,40 +327,42 @@ def excluir_tarefa(id):
 def tags():
     form = TagForm()
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor = conn.cursor(dictionary=True)
 
-    if form.validate_on_submit():
-        try:
-            cursor.execute("INSERT INTO tags (nome, cor) VALUES (%s, %s)", (form.nome.data, form.cor.data))
-            conn.commit()
-            flash('Nova tag criada com sucesso!', 'success')
-            return redirect(url_for('tarefas.tags'))
-        except mysql.connector.Error as err:
-            if err.errno == 1062:
-                flash('Erro: Já existe uma tag com este nome.', 'danger')
-            else:
-                flash(f'Erro ao adicionar tag: {err}', 'danger')
+        if form.validate_on_submit():
+            try:
+                cursor.execute("INSERT INTO tags (nome, cor) VALUES (%s, %s)", (form.nome.data, form.cor.data))
+                conn.commit()
+                flash('Nova tag criada com sucesso!', 'success')
+                return redirect(url_for('tarefas.tags'))
+            except mysql.connector.Error as err:
+                if err.errno == 1062:
+                    flash('Erro: Já existe uma tag com este nome.', 'danger')
+                else:
+                    flash(f'Erro ao adicionar tag: {err}', 'danger')
 
-    cursor.execute("SELECT * FROM tags ORDER BY nome")
-    lista_tags = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return render_template('tags.html', tags=lista_tags, form=form)
+        cursor.execute("SELECT * FROM tags ORDER BY nome")
+        lista_tags = cursor.fetchall()
+        return render_template('tags.html', tags=lista_tags, form=form)
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 @tarefas_bp.route('/tag/<int:id>/excluir', methods=['POST'])
 @login_required
 def excluir_tag(id):
     conn = get_db_connection()
-    cursor = conn.cursor()
     try:
+        cursor = conn.cursor()
         cursor.execute("DELETE FROM tags WHERE id = %s", (id,))
         conn.commit()
         flash('Tag excluída com sucesso!', 'success')
     except mysql.connector.Error as err:
         flash(f'Erro ao excluir tag: {err}', 'danger')
     finally:
-        cursor.close()
-        conn.close()
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
     return redirect(url_for('tarefas.tags'))
 
 # --- ANEXOS ---
@@ -369,34 +370,39 @@ def excluir_tag(id):
 @login_required
 def download_anexo(id):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM tarefa_anexos WHERE id = %s", (id,))
-    anexo = cursor.fetchone()
-    cursor.close()
-    conn.close()
-
-    if anexo:
-        return send_from_directory(current_app.config['UPLOAD_FOLDER'], anexo['caminho_arquivo'], download_name=anexo['nome_original'], as_attachment=True)
-    abort(404)
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM tarefa_anexos WHERE id = %s", (id,))
+        anexo = cursor.fetchone()
+        
+        if anexo:
+            return send_from_directory(current_app.config['UPLOAD_FOLDER'], anexo['caminho_arquivo'], download_name=anexo['nome_original'], as_attachment=True)
+        abort(404)
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
 
 @tarefas_bp.route('/anexo/excluir/<int:id>', methods=['POST'])
 @login_required
 def excluir_anexo(id):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM tarefa_anexos WHERE id = %s", (id,))
-    anexo = cursor.fetchone()
-    
-    if anexo:
-        try:
-            os.remove(os.path.join(current_app.config['UPLOAD_FOLDER'], anexo['caminho_arquivo']))
-        except OSError as e:
-            current_app.logger.warning(f"Falha ao apagar anexo físico: {e}") 
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM tarefa_anexos WHERE id = %s", (id,))
+        anexo = cursor.fetchone()
+        
+        if anexo:
+            try:
+                os.remove(os.path.join(current_app.config['UPLOAD_FOLDER'], anexo['caminho_arquivo']))
+            except OSError as e:
+                current_app.logger.warning(f"Falha ao apagar anexo físico: {e}") 
+                
+            cursor.execute("DELETE FROM tarefa_anexos WHERE id = %s", (id,))
+            conn.commit()
+            flash('Anexo removido.', 'success')
             
-        cursor.execute("DELETE FROM tarefa_anexos WHERE id = %s", (id,))
-        conn.commit()
-        flash('Anexo removido.', 'success')
-    
-    cursor.close()
-    conn.close()
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
+        
     return redirect(request.referrer)

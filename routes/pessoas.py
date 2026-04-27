@@ -30,31 +30,33 @@ def index():
     cpf_cnpj = request.args.get('cpf_cnpj', '')
 
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    # Construção da Query Dinâmica
-    query = "SELECT * FROM pessoas WHERE 1=1"
-    params = []
-
-    if nome:
-        query += " AND nome LIKE %s"
-        params.append(f"%{nome}%")
-    
-    if tipo_pessoa:
-        query += " AND tipo_pessoa = %s"
-        params.append(tipo_pessoa)
+    try:
+        cursor = conn.cursor(dictionary=True)
         
-    if cpf_cnpj:
-        query += " AND cpf_cnpj LIKE %s"
-        params.append(f"%{cpf_cnpj}%")
+        # Construção da Query Dinâmica
+        query = "SELECT * FROM pessoas WHERE 1=1"
+        params = []
 
-    query += " ORDER BY nome"
-    
-    cursor.execute(query, tuple(params))
-    lista_pessoas = cursor.fetchall()
-    
-    cursor.close()
-    conn.close()
+        if nome:
+            query += " AND nome LIKE %s"
+            params.append(f"%{nome}%")
+        
+        if tipo_pessoa:
+            query += " AND tipo_pessoa = %s"
+            params.append(tipo_pessoa)
+            
+        if cpf_cnpj:
+            query += " AND cpf_cnpj LIKE %s"
+            params.append(f"%{cpf_cnpj}%")
+
+        query += " ORDER BY nome"
+        
+        cursor.execute(query, tuple(params))
+        lista_pessoas = cursor.fetchall()
+        
+    finally:
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
     
     # Retornamos os filtros para que os campos continuem preenchidos na tela após buscar
     return render_template('pessoas.html', 
@@ -72,16 +74,16 @@ def nova_pessoa():
     if form.validate_on_submit():
         cpf_cnpj_perfeito = formatar_cpf_cnpj(form.cpf_cnpj.data, form.natureza.data)
         conn = get_db_connection()
-        cursor = conn.cursor()
-        sql = """INSERT INTO pessoas (tipo_pessoa, nome, natureza, cpf_cnpj, endereco, rg, ocupacao, genero, nome_mae, nacionalidade, estado_civil, data_nascimento, email) 
-                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-        val = (
-            form.tipo_pessoa.data, form.nome.data, form.natureza.data,
-            cpf_cnpj_perfeito, form.endereco.data, form.rg.data,
-            form.ocupacao.data, form.genero.data, form.nome_mae.data,
-            form.nacionalidade.data, form.estado_civil.data, form.data_nascimento.data, form.email.data
-        )
         try:
+            cursor = conn.cursor()
+            sql = """INSERT INTO pessoas (tipo_pessoa, nome, natureza, cpf_cnpj, endereco, rg, ocupacao, genero, nome_mae, nacionalidade, estado_civil, data_nascimento, email) 
+                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+            val = (
+                form.tipo_pessoa.data, form.nome.data, form.natureza.data,
+                cpf_cnpj_perfeito, form.endereco.data, form.rg.data,
+                form.ocupacao.data, form.genero.data, form.nome_mae.data,
+                form.nacionalidade.data, form.estado_civil.data, form.data_nascimento.data, form.email.data
+            )
             cursor.execute(sql, val)
             conn.commit()
             flash('Pessoa cadastrada com sucesso!', 'success')
@@ -92,37 +94,44 @@ def nova_pessoa():
             else:
                 flash(f'Erro ao cadastrar pessoa: {err}', 'danger')
         finally:
-            cursor.close()
-            conn.close()
+            if 'cursor' in locals() and cursor: cursor.close()
+            if 'conn' in locals() and conn.is_connected(): conn.close()
+            
     return render_template('pessoa_form.html', form=form, title="Nova Pessoa")
 
 @pessoas_bp.route('/pessoa/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar_pessoa(id):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM pessoas WHERE id = %s", (id,))
-    pessoa = cursor.fetchone()
-    cursor.close()
-    conn.close()
+    # Parte 1: Busca inicial (Blindada)
+    conn_fetch = get_db_connection()
+    try:
+        cursor_fetch = conn_fetch.cursor(dictionary=True)
+        cursor_fetch.execute("SELECT * FROM pessoas WHERE id = %s", (id,))
+        pessoa = cursor_fetch.fetchone()
+    finally:
+        if 'cursor_fetch' in locals() and cursor_fetch: cursor_fetch.close()
+        if 'conn_fetch' in locals() and conn_fetch.is_connected(): conn_fetch.close()
+        
     if not pessoa:
         abort(404)
 
     form = PessoaForm(data=pessoa)
+    
+    # Parte 2: Atualização (Blindada)
     if form.validate_on_submit():
         cpf_cnpj_perfeito = formatar_cpf_cnpj(form.cpf_cnpj.data, form.natureza.data)
         conn = get_db_connection()
-        cursor = conn.cursor()
-        sql = """UPDATE pessoas SET tipo_pessoa=%s, nome=%s, natureza=%s, cpf_cnpj=%s, 
-                 endereco=%s, rg=%s, ocupacao=%s, genero=%s, nome_mae=%s,
-                 nacionalidade=%s, estado_civil=%s, data_nascimento=%s, email=%s WHERE id=%s"""
-        val = (
-            form.tipo_pessoa.data, form.nome.data, form.natureza.data,
-            cpf_cnpj_perfeito, form.endereco.data, form.rg.data,
-            form.ocupacao.data, form.genero.data, form.nome_mae.data,
-            form.nacionalidade.data, form.estado_civil.data, form.data_nascimento.data, form.email.data, id
-        )
         try:
+            cursor = conn.cursor()
+            sql = """UPDATE pessoas SET tipo_pessoa=%s, nome=%s, natureza=%s, cpf_cnpj=%s, 
+                     endereco=%s, rg=%s, ocupacao=%s, genero=%s, nome_mae=%s,
+                     nacionalidade=%s, estado_civil=%s, data_nascimento=%s, email=%s WHERE id=%s"""
+            val = (
+                form.tipo_pessoa.data, form.nome.data, form.natureza.data,
+                cpf_cnpj_perfeito, form.endereco.data, form.rg.data,
+                form.ocupacao.data, form.genero.data, form.nome_mae.data,
+                form.nacionalidade.data, form.estado_civil.data, form.data_nascimento.data, form.email.data, id
+            )
             cursor.execute(sql, val)
             conn.commit()
             flash('Pessoa atualizada com sucesso!', 'success')
@@ -133,22 +142,24 @@ def editar_pessoa(id):
             else:
                 flash(f'Erro ao atualizar pessoa: {err}', 'danger')
         finally:
-            cursor.close()
-            conn.close()
+            if 'cursor' in locals() and cursor: cursor.close()
+            if 'conn' in locals() and conn.is_connected(): conn.close()
+            
     return render_template('pessoa_form.html', form=form, title="Editar Pessoa")
 
 @pessoas_bp.route('/pessoa/<int:id>/excluir', methods=['POST'])
 @login_required
 def excluir_pessoa(id):
     conn = get_db_connection()
-    cursor = conn.cursor()
     try:
+        cursor = conn.cursor()
         cursor.execute("DELETE FROM pessoas WHERE id = %s", (id,))
         conn.commit()
         flash('Pessoa excluída com sucesso!', 'success')
     except mysql.connector.Error as err:
         flash(f'Erro: esta pessoa pode estar associada a um processo. Detalhes: {err}', 'danger')
     finally:
-        cursor.close()
-        conn.close()
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'conn' in locals() and conn.is_connected(): conn.close()
+        
     return redirect(url_for('pessoas.index'))
